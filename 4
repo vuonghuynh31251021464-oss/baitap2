@@ -1,0 +1,93 @@
+import numpy as np
+import skfuzzy as fuzzy
+from skfuzzy import control as ctrl
+
+
+Order_Density = ctrl.Antecedent(np.arange(0, 11, 1), 'Order_Density')
+Dilivery_Urgency = ctrl.Antecedent(np.arange(0, 11, 1), 'Dilivery_Urgency')
+Driver_Current_Load = ctrl.Antecedent(np.arange(0, 11, 1), 'Driver_Current_Load')
+Traffic_condition = ctrl.Antecedent(np.arange(0, 11, 1), 'Traffic_condition')
+Profit_Per_Dilivery = ctrl.Antecedent(np.arange(0, 11, 1), 'Profit_Per_Dilivery')
+
+
+Number_of_Orders_to_Combine = ctrl.Consequent(np.arange(0, 11, 1), 'Number_of_Orders_to_Combine')
+Dilivery_Priority = ctrl.Consequent(np.arange(0, 11, 1), 'Dilivery_Priority')
+
+
+Order_Density['Low'] = fuzzy.trimf(Order_Density.universe, [0, 0, 5])
+Order_Density['Medium'] = fuzzy.trimf(Order_Density.universe, [0, 5, 10])
+Order_Density['High'] = fuzzy.trimf(Order_Density.universe, [5, 10, 10])
+
+Dilivery_Urgency['Low'] = fuzzy.trimf(Dilivery_Urgency.universe, [0, 0, 5])
+Dilivery_Urgency['Medium'] = fuzzy.trimf(Dilivery_Urgency.universe, [0, 5, 10])
+Dilivery_Urgency['High'] = fuzzy.trimf(Dilivery_Urgency.universe, [5, 10, 10])
+
+Driver_Current_Load['Low'] = fuzzy.trimf(Driver_Current_Load.universe, [0, 0, 5])
+Driver_Current_Load['Medium'] = fuzzy.trimf(Driver_Current_Load.universe, [0, 5, 10])
+Driver_Current_Load['High'] = fuzzy.trimf(Driver_Current_Load.universe, [5, 10, 10])
+
+Traffic_condition['Low'] = fuzzy.trimf(Traffic_condition.universe, [0, 0, 5])
+Traffic_condition['Medium'] = fuzzy.trimf(Traffic_condition.universe, [0, 5, 10])
+Traffic_condition['High'] = fuzzy.trimf(Traffic_condition.universe, [5, 10, 10])
+
+Profit_Per_Dilivery['Low'] = fuzzy.trimf(Profit_Per_Dilivery.universe, [0, 0, 5])
+Profit_Per_Dilivery['Medium'] = fuzzy.trimf(Profit_Per_Dilivery.universe, [0, 5, 10])
+Profit_Per_Dilivery['High'] = fuzzy.trimf(Profit_Per_Dilivery.universe, [5, 10, 10])
+
+Number_of_Orders_to_Combine['Less'] = fuzzy.trimf(Number_of_Orders_to_Combine.universe, [0, 0, 5])
+Number_of_Orders_to_Combine['Few'] = fuzzy.trimf(Number_of_Orders_to_Combine.universe, [3, 5, 7])
+Number_of_Orders_to_Combine['Many'] = fuzzy.trimf(Number_of_Orders_to_Combine.universe, [5, 10, 10])
+
+Dilivery_Priority['Low'] = fuzzy.trimf(Dilivery_Priority.universe, [0, 0, 5])
+Dilivery_Priority['Medium'] = fuzzy.trimf(Dilivery_Priority.universe, [3, 5, 7])
+Dilivery_Priority['High'] = fuzzy.trimf(Dilivery_Priority.universe, [5, 10, 10])
+
+
+rule1 = ctrl.Rule(Order_Density['High'] & Driver_Current_Load['Low'] & Traffic_condition['Low'],
+                  Number_of_Orders_to_Combine['Many'])
+
+rule2 = ctrl.Rule(Order_Density['Medium'] & Traffic_condition['High'] & Dilivery_Urgency['Medium'],
+                  Number_of_Orders_to_Combine['Few'])
+
+rule3 = ctrl.Rule(Driver_Current_Load['High'] & Order_Density['High'] & Profit_Per_Dilivery['Medium'],
+                  Number_of_Orders_to_Combine['Few'])
+
+rule4 = ctrl.Rule(Order_Density['Low'] & Dilivery_Urgency['High'] & Traffic_condition['Medium'],
+                  Number_of_Orders_to_Combine['Few'])
+
+rule5 = ctrl.Rule(Profit_Per_Dilivery['High'] & Dilivery_Urgency['High'] & Traffic_condition['High'],
+                  Number_of_Orders_to_Combine['Few'])
+
+rule6 = ctrl.Rule(Dilivery_Urgency['High'] & Profit_Per_Dilivery['High'],
+                  Dilivery_Priority['High'])
+
+rule7 = ctrl.Rule(Dilivery_Urgency['Medium'] & Traffic_condition['Medium'],
+                  Dilivery_Priority['Medium'])
+
+rule8 = ctrl.Rule(Dilivery_Urgency['Low'] & Order_Density['High'] & Profit_Per_Dilivery['Low'],
+                  Dilivery_Priority['Low'])
+
+
+system_ctrl = ctrl.ControlSystem([
+    rule1, rule2, rule3, rule4, rule5,
+    rule6, rule7, rule8
+])
+
+sim = ctrl.ControlSystemSimulation(system_ctrl)
+
+sim.input['Order_Density'] = 5
+sim.input['Dilivery_Urgency'] = 7
+sim.input['Driver_Current_Load'] = 4
+sim.input['Traffic_condition'] = 8
+sim.input['Profit_Per_Dilivery'] = 5
+
+sim.compute()
+
+print("Đơn hàng cần kết hợp là:",
+      sim.output.get('Number_of_Orders_to_Combine', 'Không có'))
+
+print("Ưu tiên giao hàng:",
+      sim.output.get('Dilivery_Priority', 'Không có'))
+
+Number_of_Orders_to_Combine.view(sim=sim)
+Dilivery_Priority.view(sim=sim)
