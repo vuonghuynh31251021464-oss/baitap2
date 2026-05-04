@@ -1,0 +1,117 @@
+!pip install scikit-fuzzy
+
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+
+ride_distance = ctrl.Antecedent(np.arange(0, 51, 1), 'ride_distance')
+traffic = ctrl.Antecedent(np.arange(0, 1.1, 0.1), 'traffic')
+demand = ctrl.Antecedent(np.arange(0, 1.1, 0.1), 'demand')
+weather = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'weather')
+customer_rating = ctrl.Antecedent(np.arange(1, 6, 1), 'customer_rating')
+ride_punctuality = ctrl.Antecedent(np.arange(0, 1.1, 0.1), 'ride_punctuality')
+
+
+cost = ctrl.Consequent(np.arange(0, 100.1, 0.1), 'cost')
+point = ctrl.Consequent(np.arange(0, 10.1, 0.1), 'point')
+
+ride_distance['short'] = fuzz.trimf(ride_distance.universe, [0, 0, 3])
+ride_distance['medium'] = fuzz.trimf(ride_distance.universe, [2, 5, 8])
+ride_distance['long'] = fuzz.trimf(ride_distance.universe, [6, 13, 20])
+ride_distance['verylong'] = fuzz.trimf(ride_distance.universe, [15, 50, 50])
+
+traffic['low'] = fuzz.trimf(traffic.universe, [0, 0, 0.3])
+traffic['medium'] = fuzz.trimf(traffic.universe, [0.2, 0.5, 0.8])
+traffic['high'] = fuzz.trimf(traffic.universe, [0.6, 1, 1])
+
+demand['low'] = fuzz.trimf(demand.universe, [0, 0, 0.3])
+demand['medium'] = fuzz.trimf(demand.universe, [0.2, 0.5, 0.8])
+demand['high'] = fuzz.trimf(demand.universe, [0.6, 1, 1])
+
+weather['bad'] = fuzz.trimf(weather.universe, [0, 0, 5])
+weather['moderate'] = fuzz.trimf(weather.universe, [0, 5, 10])
+weather['good'] = fuzz.trimf(weather.universe, [5, 10, 10])
+
+customer_rating['poor'] = fuzz.trimf(customer_rating.universe, [1, 1, 2.5])
+customer_rating['average'] = fuzz.trimf(customer_rating.universe, [2.5, 3, 4])
+customer_rating['good'] = fuzz.trimf(customer_rating.universe, [3.5, 5, 5])
+
+ride_punctuality['late'] = fuzz.trimf(ride_punctuality.universe, [0, 0, 0.5])
+ride_punctuality['ontime'] = fuzz.trimf(ride_punctuality.universe, [0.4, 0.6, 0.8])
+ride_punctuality['early'] = fuzz.trimf(ride_punctuality.universe, [0.7, 1, 1])
+
+cost['low'] = fuzz.trimf(cost.universe, [0, 0, 50])
+cost['medium'] = fuzz.trimf(cost.universe, [30, 50, 70])
+cost['high'] = fuzz.trimf(cost.universe, [60, 100, 100])
+
+point['low'] = fuzz.trimf(point.universe, [0, 0, 5])
+point['average'] = fuzz.trimf(point.universe, [3, 5, 7])
+point['high'] = fuzz.trimf(point.universe, [6, 10, 10])
+
+rule1 = ctrl.Rule(ride_distance['short'] & traffic['low'] & demand['low'], cost['low'])
+rule2 = ctrl.Rule(ride_distance['short'] & traffic['medium'] & demand['high'], cost['medium'])
+rule3 = ctrl.Rule(ride_distance['medium'] & traffic['high'] & demand['high'], cost['high'])
+rule4 = ctrl.Rule(ride_distance['long'] & traffic['medium'] & weather['good'], cost['medium'])
+rule5 = ctrl.Rule(ride_distance['long'] & traffic['high'] & weather['bad'], cost['high'])
+rule6 = ctrl.Rule(ride_distance['verylong'] & traffic['high'] & demand['high'], cost['high'])
+rule7 = ctrl.Rule(ride_distance['medium'] & traffic['low'] & demand['low'], cost['medium'])
+rule8 = ctrl.Rule(ride_distance['short'] & traffic['high'] & weather['bad'], cost['high'])
+rule9 = ctrl.Rule(ride_distance['verylong'] & weather['bad'], cost['high'])
+rule10 = ctrl.Rule(ride_distance['medium'] & traffic['medium'] & weather['good'], cost['medium'])
+rule_fallback = ctrl.Rule(
+    ride_distance['short'] | ride_distance['medium'] | ride_distance['long'] | ride_distance['verylong'],
+    cost['medium']
+)
+
+
+rule11 = ctrl.Rule(customer_rating['good'] & ride_punctuality['early'], point['high'])
+rule12 = ctrl.Rule(customer_rating['average'] & ride_punctuality['ontime'], point['average'])
+rule13 = ctrl.Rule(customer_rating['poor'] & ride_punctuality['late'], point['low'])
+rule14 = ctrl.Rule(ride_distance['long'] & traffic['high'] & ride_punctuality['ontime'], point['high'])
+rule15 = ctrl.Rule(ride_distance['medium'] & traffic['medium'] & customer_rating['good'], point['average'])
+rule16 = ctrl.Rule(customer_rating['poor'] & ride_punctuality['ontime'], point['low'])  # FIX
+rule17 = ctrl.Rule(ride_distance['verylong'] & weather['bad'] & customer_rating['good'], point['high'])
+rule18 = ctrl.Rule(ride_distance['short'] & customer_rating['average'] & ride_punctuality['ontime'], point['low'])
+rule19 = ctrl.Rule(ride_distance['long'] & traffic['high'] & ride_punctuality['late'], point['low'])
+rule20 = ctrl.Rule(ride_distance['medium'] & weather['moderate'] & customer_rating['good'], point['average'])
+
+cost_ctrl = ctrl.ControlSystem([
+    rule1, rule2, rule3, rule4, rule5,
+    rule6, rule7, rule8, rule9, rule10,rule_fallback
+])
+
+point_ctrl = ctrl.ControlSystem([
+    rule11, rule12, rule13, rule14, rule15,
+    rule16, rule17, rule18, rule19, rule20
+])
+
+cost_sim = ctrl.ControlSystemSimulation(cost_ctrl)
+point_sim = ctrl.ControlSystemSimulation(point_ctrl)
+
+distance_input = 10
+traffic_input = 0.5
+demand_input = 0.6
+weather_input = 5
+rating_input = 4
+punctuality_input = 0.7
+
+
+cost_sim.input['ride_distance'] = distance_input
+cost_sim.input['traffic'] = traffic_input
+cost_sim.input['demand'] = demand_input
+cost_sim.input['weather'] = weather_input
+cost_sim.compute()
+
+
+point_sim.input['ride_distance'] = distance_input
+point_sim.input['traffic'] = traffic_input
+point_sim.input['weather'] = weather_input
+point_sim.input['customer_rating'] = rating_input
+point_sim.input['ride_punctuality'] = punctuality_input
+point_sim.compute()
+
+print("Cost points:", round(cost_sim.output['cost'], 2))
+point.view(sim=point_sim)
+print("Reward points:", round(point_sim.output['point'], 2))
+cost.view(sim=cost_sim)
+
