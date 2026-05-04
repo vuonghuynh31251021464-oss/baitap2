@@ -1,0 +1,52 @@
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+
+demand = ctrl.Antecedent(np.arange(0, 11, 1), 'demand')
+competition = ctrl.Antecedent(np.arange(0, 11, 1), 'competition')
+reputation = ctrl.Antecedent(np.arange(0, 11, 1), 'reputation')
+profit = ctrl.Antecedent(np.arange(0, 11, 1), 'profit')
+season = ctrl.Antecedent(np.arange(0, 11, 1), 'season')
+
+discount = ctrl.Consequent(np.arange(0, 51, 1), 'discount')
+
+for var in [demand, competition, reputation, profit, season]:
+    var['low'] = fuzz.trimf(var.universe, [0, 0, 5])
+    var['medium'] = fuzz.trimf(var.universe, [0, 5, 10])
+    var['high'] = fuzz.trimf(var.universe, [5, 10, 10])
+
+
+discount['very_low'] = fuzz.trimf(discount.universe, [0, 0, 5])
+discount['low'] = fuzz.trimf(discount.universe, [0, 5, 10])
+discount['medium'] = fuzz.trimf(discount.universe, [10, 20, 30])
+discount['high'] = fuzz.trimf(discount.universe, [20, 35, 50])
+discount['very_high'] = fuzz.trimf(discount.universe, [40, 50, 50])
+
+
+rule1 = ctrl.Rule(demand['high'] & competition['low'] & profit['low'], discount['very_low'])
+
+rule2 = ctrl.Rule(demand['low'] & competition['high'] & profit['low'], discount['high'])
+
+rule3 = ctrl.Rule(reputation['high'] & profit['medium'] & demand['high'], discount['medium'])
+
+rule4 = ctrl.Rule(competition['high'] & demand['high'] & profit['high'], discount['high'])
+
+rule5 = ctrl.Rule(reputation['low'] & demand['medium'] & profit['low'], discount['medium'])
+
+rule6 = ctrl.Rule(demand['high'] & season['low'] & competition['low'], discount['low'])
+
+rule7 = ctrl.Rule(profit['high'] & competition['medium'] & season['medium'], discount['medium'])
+
+
+discount_ctrl = ctrl.ControlSystem([rule1, rule2, rule3, rule4, rule5, rule6, rule7])
+discount_sim = ctrl.ControlSystemSimulation(discount_ctrl)
+
+
+discount_sim.input['demand'] = 9        
+discount_sim.input['competition'] = 5   
+discount_sim.input['reputation'] = 5    
+discount_sim.input['profit'] = 9        
+discount_sim.input['season'] = 9        
+discount_sim.compute()
+
+print(" Mức giảm giá đề xuất:", discount_sim.output['discount'], "%")
